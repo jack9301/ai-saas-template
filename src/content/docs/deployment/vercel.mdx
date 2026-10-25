@@ -37,46 +37,79 @@ title: Vercel 部署
 
 ## 🔧 环境变量
 
-在 Vercel 控制面板中配置您的环境变量：
+在 Vercel 控制面板中配置您的环境变量。
 
 ### 必需变量
 
-```bash
-# 应用程序配置
-NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+以下 5 个变量缺失时，**构建会直接失败**，并在日志最前面打印出缺失清单
+（校验逻辑见 `src/env.ts`）：
 
+```bash
 # 数据库
 DATABASE_URL=postgresql://username:password@host:5432/database
 
-# 认证
-AI SaaSR_AUTH_SECRET=your-production-secret-key
+# 会话签名密钥（至少 32 个字符）
+# 生成方式：openssl rand -base64 32
+BETTER_AUTH_SECRET=your-production-secret-key-min-32-chars
 
-# 管理员配置
-ADMIN_EMAILS=admin@yourdomain.com
+# Stripe 支付
+STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_your_publishable_key
+```
+
+> `BETTER_AUTH_SECRET` 没有默认值，也不会回退到任何示例密钥。
+> 缺失时 better-auth 会拒绝初始化，会话功能不可用。
+
+### 强烈建议配置
+
+这些变量有默认值，不填不会导致构建失败，但生产环境不填会出问题：
+
+```bash
+# 应用真实地址：不填则支付跳转、OAuth 回调都会指向 localhost
+NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
+
+# 认证回调地址：绑定自定义域名后需要与站点地址保持一致
+BETTER_AUTH_URL=https://your-domain.vercel.app
 ```
 
 ### 可选变量（用于完整功能）
 
 ```bash
-# Stripe 支付
-STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
-NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY=price_monthly_id
-NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY=price_yearly_id
+# AI 服务（至少配置一个，否则 AI 功能不可用）
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+XAI_API_KEY=...
+
+# Redis（缓存与限流）
+UPSTASH_REDIS_REST_URL=https://...
+UPSTASH_REDIS_REST_TOKEN=...
+
+# 邮件（邮箱验证与重置密码）
+RESEND_API_KEY=re_...
 
 # OAuth 提供商
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
 
-# 文件存储
-R2_BUCKET_NAME=your-production-bucket
-R2_ACCESS_KEY_ID=your-access-key-id
-R2_SECRET_ACCESS_KEY=your-secret-access-key
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
-R2_PUBLIC_URL=https://your-production-domain.com
+# 管理员账号（逗号分隔）
+ADMIN_EMAILS=admin@yourdomain.com
+
+# 监控
+SENTRY_DSN=https://...
 ```
+
+> 变量名称必须与 `src/env.ts` 中的定义完全一致，填写未定义的变量不会生效。
+> 完整清单见 [配置文档](../development/configuration)。
+
+### 预览环境不共享生产密钥
+
+预览（Preview）部署如果不想复用生产密钥，可以在预览环境中单独设置
+`SKIP_ENV_VALIDATION=true` 跳过构建期校验。注意这只是跳过**构建期**校验，
+预览环境运行时的功能仍需要对应的密钥才能正常工作。
 
 ### 设置环境变量
 
@@ -84,12 +117,13 @@ R2_PUBLIC_URL=https://your-production-domain.com
    - 转到项目设置
    - 导航到"环境变量"
    - 添加每个变量并选择适当的环境（生产、预览、开发）
+   - 密钥类变量建议勾选 **Sensitive**
 
 2. **通过 Vercel CLI：**
    ```bash
-   vercel env add NEXT_PUBLIC_APP_URL
    vercel env add DATABASE_URL
-   vercel env add AI SaaSR_AUTH_SECRET
+   vercel env add BETTER_AUTH_SECRET
+   vercel env add STRIPE_SECRET_KEY
    ```
 
 ## 🗄️ 数据库设置

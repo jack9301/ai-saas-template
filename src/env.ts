@@ -2,12 +2,16 @@ import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
 
 export const env = createEnv({
-  // 在构建时跳过验证，因为环境变量在运行时才可用
-  // 1) 显式设置 SKIP_ENV_VALIDATION=true 可跳过（CI / Docker 构建场景）
-  // 2) 生产环境且未提供 DATABASE_URL 时跳过（避免构建期因缺少运行时变量失败）
-  skipValidation:
-    process.env.SKIP_ENV_VALIDATION === 'true' ||
-    (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL),
+  // 环境变量校验策略：
+  // 默认始终校验。缺失的必填变量会在构建最开始（加载 next.config.ts 时）就以
+  // 一份清晰的清单报出来，而不是等到某个路由模块在导入时抛出一个无法定位根因的
+  // "Failed to collect page data for ..."。
+  //
+  // 仅在显式设置 SKIP_ENV_VALIDATION=true 时跳过，适用于：
+  //   - Docker 镜像构建阶段（密钥在运行时才由平台注入）
+  //   - CI 构建（没有真实密钥）
+  //   - Vercel 预览环境（不希望共享生产密钥）
+  skipValidation: process.env.SKIP_ENV_VALIDATION === 'true',
   /*
    * Serverside Environment variables, not available on the client.
    * Will throw if you access these variables on the client.
@@ -55,7 +59,18 @@ export const env = createEnv({
     // Better Auth
     // 必填：缺少该值时必须让构建失败，绝不能回退到公开的默认值，
     // 否则会话签名密钥将被公开，攻击者可以伪造任意用户的会话。
-    BETTER_AUTH_SECRET: z.string().min(32),
+    //
+    // 同时拒绝 .env.example 里的示例值：它长度超过 32，单靠长度校验拦不住，
+    // 但它是公开的，照抄上线等于把会话签名密钥公开。
+    BETTER_AUTH_SECRET: z
+      .string()
+      .min(32)
+      .refine(
+        value =>
+          !value.includes('your-secret-key') &&
+          !value.includes('change-in-production'),
+        'BETTER_AUTH_SECRET 仍是 .env.example 中的示例值，请先生成随机密钥：openssl rand -base64 32'
+      ),
     BETTER_AUTH_URL: z.string().url().optional(),
 
     // Admin configuration

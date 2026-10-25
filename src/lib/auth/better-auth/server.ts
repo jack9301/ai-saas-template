@@ -11,16 +11,20 @@ import { env } from '@/env'
 import { sendVerificationEmail as sendVerificationEmailFn } from '@/lib/auth/email-verification'
 import { recordLoginAttempt } from '@/lib/auth/login-security'
 import { sendResetEmail as sendResetEmailFn } from '@/lib/auth/password-reset'
+import { logger } from '@/lib/logger'
 import { db } from '../../db'
 
-// 会话签名密钥：缺少时直接抛错。
+// 会话签名密钥。
+//
 // 绝不能回退到任何公开的默认值，否则攻击者可以伪造任意用户的会话。
+// better-auth 自身会做 fail-closed 校验：生产环境下密钥缺失或仍为默认值时，
+// 初始化会直接失败（"You are using the default secret. Please set
+// `BETTER_AUTH_SECRET`"），绝不会用默认密钥签发会话。
+//
+// 这里不在模块顶层抛错：`next build` 会导入每个路由模块来收集页面数据，顶层抛错
+// 会让构建以 "Failed to collect page data for /api/auth/[...all]" 失败，错误信息
+// 完全指不到根因。缺少密钥时由 better-auth 在真正需要会话时拒绝服务。
 const authSecret = env.BETTER_AUTH_SECRET
-if (!authSecret) {
-  throw new Error(
-    'BETTER_AUTH_SECRET 未配置：会话签名密钥不能为空，请设置至少 32 个字符的随机值。'
-  )
-}
 
 export const auth = betterAuth({
   // 数据库适配器 - 明确指定schema映射
@@ -220,6 +224,14 @@ export const auth = betterAuth({
       return user
     },
   },
+})
+
+// betterAuth() 返回的 $context 是一个 Promise：当 BETTER_AUTH_SECRET 缺失时它会 reject。
+// 构建阶段没有真实密钥，如果放任这个 rejection 无人处理，Node 会以
+// "unhandled promise rejection" 直接终止构建进程。这里显式接管该 rejection：
+// 构建期只记录一条明确日志，真正需要会话的请求仍会收到同样的明确报错。
+void auth.$context.catch((error: unknown) => {
+  logger.error('Better Auth 初始化失败:', error as Error)
 })
 
 // 导出类型

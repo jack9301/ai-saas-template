@@ -46,6 +46,9 @@ jobs:
         
       - name: Build
         run: pnpm run build
+        env:
+          # CI 没有真实密钥，显式跳过环境变量校验
+          SKIP_ENV_VALIDATION: true
         
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

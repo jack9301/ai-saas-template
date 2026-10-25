@@ -30,6 +30,9 @@ COPY . .
 # 设置环境变量
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# 构建阶段还没有运行时密钥（由平台在容器启动时注入），显式跳过环境变量校验。
+# 校验逻辑见 src/env.ts；运行时会重新校验缺失的必填变量。
+ENV SKIP_ENV_VALIDATION=true
 
 # 运行 postinstall 脚本（fumadocs-mdx 生成类型）
 RUN pnpm run postinstall || true

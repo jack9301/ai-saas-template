@@ -137,6 +137,10 @@ vercel --prod
 - 数据库需使用外部 PostgreSQL 服务（推荐 [Neon](https://neon.tech/) 或 [Supabase](https://supabase.com/)）
 - Redis 需使用 [Upstash](https://upstash.com/) 等 Serverless Redis 服务
 - 在 Vercel 控制面板中配置所有环境变量
+- **构建会校验环境变量**：`DATABASE_URL`、`BETTER_AUTH_SECRET`、`STRIPE_SECRET_KEY`、
+  `STRIPE_WEBHOOK_SECRET`、`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` 缺少任何一个，
+  构建都会在最开始就失败，并打印出缺失变量的清单（校验逻辑见 `src/env.ts`）。
+  如需跳过（例如预览环境不想共享生产密钥），显式设置 `SKIP_ENV_VALIDATION=true`
 - Stripe Webhook 端点设置为 `https://your-domain.vercel.app/api/payments/webhook`
 - **`BETTER_AUTH_SECRET` 必须显式配置**（至少 32 个字符）。该变量没有默认值，
   缺失时构建会直接失败——绝不能使用任何可预测的密钥，否则会话可被伪造

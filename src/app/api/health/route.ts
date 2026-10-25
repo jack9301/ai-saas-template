@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge'
+// 使用 Node 运行时：Edge Runtime 不支持 process.uptime，
+// 保留 edge 会让每次构建都抛出 "A Node.js API is used ... not supported in
+// the Edge Runtime" 警告，且 uptime 恒为 0。
+export const runtime = 'nodejs'
 
 /**
  * Health check endpoint for Docker and monitoring

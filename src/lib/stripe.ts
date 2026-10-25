@@ -2,20 +2,57 @@ import Stripe from 'stripe'
 import { env } from '@/env'
 import { logger } from '@/lib/logger'
 
-// 初始化Stripe客户端
-export const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: '2026-03-25.dahlia',
-  typescript: true,
-  appInfo: {
-    name: 'AI SaaS Template',
-    version: '1.0.0',
+let stripeClient: Stripe | undefined
+
+/**
+ * 创建 Stripe 客户端。
+ *
+ * 这里刻意不在模块顶层执行 `new Stripe(...)`：`next build` 会导入每一个路由模块来
+ * 收集页面数据，模块顶层的构造在密钥缺失时会直接抛错
+ * （Neither apiKey nor config.authenticator provided），让构建以
+ * "Failed to collect page data for /api/payments/create-checkout-session"
+ * 这种完全指不到根因的形式失败。
+ *
+ * 改为惰性创建后，构建期不再依赖任何运行时密钥；真正调用支付接口时才会以
+ * 明确的错误信息快速失败。
+ */
+function createStripeClient(): Stripe {
+  const apiKey = env.STRIPE_SECRET_KEY
+  if (!apiKey) {
+    throw new Error(
+      'STRIPE_SECRET_KEY 未配置：请设置 Stripe 私钥（sk_test_ / sk_live_），否则无法调用支付接口。'
+    )
+  }
+
+  return new Stripe(apiKey, {
+    apiVersion: '2026-03-25.dahlia',
+    typescript: true,
+    appInfo: {
+      name: 'AI SaaS Template',
+      version: '1.0.0',
+    },
+  })
+}
+
+// 服务端Stripe实例（首次使用时创建并缓存）
+export function getServerStripe(): Stripe {
+  if (!stripeClient) {
+    stripeClient = createStripeClient()
+  }
+  return stripeClient
+}
+
+/**
+ * 兼容旧用法：`import { stripe } from '@/lib/stripe'`。
+ * 通过 Proxy 惰性转发到真正的 Stripe 实例，首次访问属性时才创建客户端。
+ */
+export const stripe: Stripe = new Proxy({} as Stripe, {
+  get(_target, property) {
+    const instance = getServerStripe()
+    const value = Reflect.get(instance, property, instance)
+    return typeof value === 'function' ? value.bind(instance) : value
   },
 })
-
-// 服务端Stripe实例
-export function getServerStripe(): Stripe {
-  return stripe
-}
 
 // Stripe webhook签名验证
 export function verifyStripeWebhook(
