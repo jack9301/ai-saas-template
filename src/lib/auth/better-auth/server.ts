@@ -9,11 +9,18 @@ import {
 } from '@/drizzle/schemas'
 import { env } from '@/env'
 import { sendVerificationEmail as sendVerificationEmailFn } from '@/lib/auth/email-verification'
-import {
-  recordLoginAttempt,
-} from '@/lib/auth/login-security'
+import { recordLoginAttempt } from '@/lib/auth/login-security'
 import { sendResetEmail as sendResetEmailFn } from '@/lib/auth/password-reset'
 import { db } from '../../db'
+
+// 会话签名密钥：缺少时直接抛错。
+// 绝不能回退到任何公开的默认值，否则攻击者可以伪造任意用户的会话。
+const authSecret = env.BETTER_AUTH_SECRET
+if (!authSecret) {
+  throw new Error(
+    'BETTER_AUTH_SECRET 未配置：会话签名密钥不能为空，请设置至少 32 个字符的随机值。'
+  )
+}
 
 export const auth = betterAuth({
   // 数据库适配器 - 明确指定schema映射
@@ -30,7 +37,7 @@ export const auth = betterAuth({
   }),
 
   // 基础配置
-  secret: env.BETTER_AUTH_SECRET || 'your-secret-key-change-in-production',
+  secret: authSecret,
   baseURL: env.BETTER_AUTH_URL || env.NEXT_PUBLIC_SITE_URL,
 
   // 邮箱密码认证
@@ -40,7 +47,10 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({
       user,
       url,
-    }: { user: { email: string; name: string }; url: string }) => {
+    }: {
+      user: { email: string; name: string }
+      url: string
+    }) => {
       try {
         await sendVerificationEmailFn(
           { email: user.email, name: user.name },
@@ -53,10 +63,7 @@ export const auth = betterAuth({
     },
     sendResetPassword: async ({ user, url }) => {
       try {
-        await sendResetEmailFn(
-          { email: user.email, name: user.name },
-          url
-        )
+        await sendResetEmailFn({ email: user.email, name: user.name }, url)
       } catch (error) {
         console.error('📧 密码重置邮件发送失败:', error)
         throw error
@@ -68,22 +75,22 @@ export const auth = betterAuth({
   socialProviders: {
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? {
-        google: {
-          clientId: env.GOOGLE_CLIENT_ID,
-          clientSecret: env.GOOGLE_CLIENT_SECRET,
-          // 设置正确的重定向URI
-          redirectURI: `${env.BETTER_AUTH_URL || env.NEXT_PUBLIC_SITE_URL}/api/auth/callback/google`,
-        },
-      }
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+            // 设置正确的重定向URI
+            redirectURI: `${env.BETTER_AUTH_URL || env.NEXT_PUBLIC_SITE_URL}/api/auth/callback/google`,
+          },
+        }
       : {}),
     ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
       ? {
-        github: {
-          clientId: env.GITHUB_CLIENT_ID,
-          clientSecret: env.GITHUB_CLIENT_SECRET,
-          redirectURI: `${env.BETTER_AUTH_URL || env.NEXT_PUBLIC_SITE_URL}/api/auth/callback/github`,
-        },
-      }
+          github: {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+            redirectURI: `${env.BETTER_AUTH_URL || env.NEXT_PUBLIC_SITE_URL}/api/auth/callback/github`,
+          },
+        }
       : {}),
   },
 

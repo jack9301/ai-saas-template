@@ -33,6 +33,10 @@ NEXT_PUBLIC_APP_NAME="AI SaaS Template"
 # === 数据库配置 ===
 DATABASE_URL="postgresql://username:password@localhost:5432/ai_saas_template"
 
+# 是否允许执行数据库迁移（默认关闭，需显式开启）
+# 开启后运行: RUN_DB_MIGRATIONS=true pnpm db:migrate:prod
+RUN_DB_MIGRATIONS="false"
+
 # === Better Auth 配置 ===
 BETTER_AUTH_SECRET="your-secret-key-change-in-production"
 BETTER_AUTH_URL="http://localhost:3000"

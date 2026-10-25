@@ -5,6 +5,7 @@
   "author": "gegarron <gejialun88@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/geallenboy/ai-saas-template",
+  "packageManager": "pnpm@11.5.2",
   "engines": {
     "node": ">=20.9.0"
   },
@@ -27,6 +28,7 @@
     "clean": "rm -rf .next dist coverage",
     "db:generate": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "node scripts/db-migrate-production.mjs",
     "db:studio": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit studio",
     "db:push": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit push",
     "prepare": "husky || true",
@@ -100,6 +102,7 @@
     "next-intl": "^4.9.1",
     "next-themes": "^0.4.6",
     "nodemailer": "^8.0.5",
+    "pg": "^8.23.1",
     "postgres": "^3.4.9",
     "react": "^19.2.5",
     "react-day-picker": "^9.14.0",
@@ -129,6 +132,7 @@
     "@biomejs/biome": "2.4.12",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
+    "@opennextjs/cloudflare": "^1.20.13",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -136,6 +140,7 @@
     "@types/mdx": "^2.0.13",
     "@types/node": "^24.1.0",
     "@types/nodemailer": "^8.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
@@ -148,7 +153,8 @@
     "tailwindcss": "^4.2.4",
     "tsx": "^4.21.0",
     "typescript": "6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.5",
+    "wrangler": "^4.151.3"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,jsonc}": [

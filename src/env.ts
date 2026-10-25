@@ -3,8 +3,11 @@ import { z } from 'zod'
 
 export const env = createEnv({
   // 在构建时跳过验证，因为环境变量在运行时才可用
+  // 1) 显式设置 SKIP_ENV_VALIDATION=true 可跳过（CI / Docker 构建场景）
+  // 2) 生产环境且未提供 DATABASE_URL 时跳过（避免构建期因缺少运行时变量失败）
   skipValidation:
-    process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL,
+    process.env.SKIP_ENV_VALIDATION === 'true' ||
+    (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL),
   /*
    * Serverside Environment variables, not available on the client.
    * Will throw if you access these variables on the client.
@@ -50,10 +53,9 @@ export const env = createEnv({
     COOKIE_DOMAIN: z.string().optional(),
 
     // Better Auth
-    BETTER_AUTH_SECRET: z
-      .string()
-      .min(32)
-      .default('your-secret-key-change-in-production-min-32-chars'),
+    // 必填：缺少该值时必须让构建失败，绝不能回退到公开的默认值，
+    // 否则会话签名密钥将被公开，攻击者可以伪造任意用户的会话。
+    BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.string().url().optional(),
 
     // Admin configuration
@@ -81,6 +83,9 @@ export const env = createEnv({
     // Database connection pool settings
     DB_POOL_MAX: z.string().default('20').transform(Number),
     DB_POOL_MIN: z.string().default('5').transform(Number),
+
+    // 是否允许执行数据库迁移（默认关闭，需显式开启）
+    RUN_DB_MIGRATIONS: z.string().optional(),
   },
 
   /*
@@ -156,6 +161,7 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     DB_POOL_MAX: process.env.DB_POOL_MAX,
     DB_POOL_MIN: process.env.DB_POOL_MIN,
+    RUN_DB_MIGRATIONS: process.env.RUN_DB_MIGRATIONS,
 
     // Client
     NEXT_PUBLIC_SIGN_IN_URL: process.env.NEXT_PUBLIC_SIGN_IN_URL,

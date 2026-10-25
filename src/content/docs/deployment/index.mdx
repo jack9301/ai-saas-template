@@ -138,6 +138,15 @@ vercel --prod
 - Redis 需使用 [Upstash](https://upstash.com/) 等 Serverless Redis 服务
 - 在 Vercel 控制面板中配置所有环境变量
 - Stripe Webhook 端点设置为 `https://your-domain.vercel.app/api/payments/webhook`
+- **`BETTER_AUTH_SECRET` 必须显式配置**（至少 32 个字符）。该变量没有默认值，
+  缺失时构建会直接失败——绝不能使用任何可预测的密钥，否则会话可被伪造
+- 仓库根目录的 `vercel.json` 已声明定时任务（每天检查订阅到期）
+- 数据库迁移**不会**在构建阶段自动执行。确认目标数据库后，
+  使用 `RUN_DB_MIGRATIONS=true pnpm db:migrate:prod` 手动执行，
+  或在 CI 流水线中显式调用该命令
+- 仓库使用 pnpm，`package.json` 中的 `packageManager` 字段固定了 pnpm 版本；
+  `pnpm-workspace.yaml` 必须提交到 git，否则 Vercel 构建会因依赖的
+  安装脚本被拦截而失败
 
 详细配置请参阅 [Vercel 部署文档](./vercel)。
 

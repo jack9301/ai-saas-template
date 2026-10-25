@@ -94,12 +94,14 @@ const config: NextConfig = {
       ],
     },
     // API 缓存
+    // 注意：/api 下的路由包含 tRPC、Better Auth 与 Stripe Webhook，
+    // 响应与当前用户/会话相关，绝不能被 CDN 公共缓存，否则会造成跨用户数据泄露。
     {
       source: '/api/(.*)',
       headers: [
         {
           key: 'Cache-Control',
-          value: 'public, s-maxage=60, stale-while-revalidate=300',
+          value: 'private, no-store',
         },
       ],
     },
